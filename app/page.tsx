@@ -1,103 +1,288 @@
+"use client";
+
+import "@upstash/search-ui/dist/index.css";
 import Image from "next/image";
+import { apiClient } from "../utils/client";
+import SearchUI from "@/components/search-ui";
+import {
+  Input,
+  Button,
+  Card,
+  Typography,
+  Space,
+  Row,
+  Col,
+  Layout,
+  Steps,
+  Spin,
+  Flex,
+} from "antd";
+import { useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import { Youtube, Search, FileText, ArrowLeft } from "lucide-react";
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+const { Title, Text, Paragraph } = Typography;
+const { Header, Content, Footer } = Layout;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+enum Step {
+  URL_INPUT,
+  INDEXING,
+  SEARCHING,
+}
+
+export default function Page() {
+  const [url, setUrl] = useState("");
+  const [step, setStep] = useState(Step.URL_INPUT);
+  const [videoId, setVideoId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedMoment, setSelectedMoment] = useState<string>("0");
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
+  const isValidYouTubeUrl = (url: string): boolean => {
+    try {
+      const urlObj = new URL(url);
+      return (
+        urlObj.hostname.includes("youtube.com") ||
+        urlObj.hostname.includes("youtu.be")
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!isValidYouTubeUrl(url)) {
+      toast.error("Please enter a valid Youtube URL");
+      return;
+    }
+
+    const videoId = url.split("v=")[1]?.split("&")[0];
+    if (!videoId) {
+      toast.error("Could not extract video ID from the URL.");
+      return;
+    }
+    setVideoId(videoId);
+    setStep(Step.INDEXING);
+
+    try {
+      const isIndexed = await apiClient.checkIndex(videoId);
+
+      if (isIndexed) {
+        setStep(Step.SEARCHING);
+        return;
+      }
+
+      await apiClient.indexVideo(url, videoId);
+      setStep(Step.SEARCHING);
+    } catch (error) {
+      toast.error("Error indexing captions");
+      setStep(Step.URL_INPUT);
+    }
+  };
+
+  const renderUrlInput = () => (
+    <Content
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "24px",
+      }}
+    >
+      <Card
+        style={{
+          maxWidth: "800px",
+          width: "100%",
+          borderRadius: "16px",
+          boxShadow:
+            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <Title level={1}>Video Search</Title>
+          <Text style={{ fontSize: "18px", color: "#4b5563" }}>
+            Transform any YouTube video into a searchable experience
+          </Text>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div style={{ marginBottom: "32px" }}>
+          <Title
+            level={3}
+            style={{ textAlign: "center", marginBottom: "24px" }}
+          >
+            How It Works
+          </Title>
+          <Steps>
+            <Steps.Step status="process" title="Paste URL" icon={<Youtube />} />
+            <Steps.Step
+              status="process"
+              title="Index Captions"
+              icon={<FileText />}
+            />
+            <Steps.Step
+              status="process"
+              title="Search on Video"
+              icon={<Search />}
+            />
+          </Steps>
+        </div>
+
+        <Space direction="vertical" style={{ width: "100%" }} size="large">
+          <Input
+            size="large"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onPressEnter={handleSubmit}
+            allowClear
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        </Space>
+      </Card>
+    </Content>
+  );
+
+  const renderIndexing = () => (
+    <Content
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+      }}
+    >
+      <div>
+        <Spin size="large" />
+        <Title level={3} style={{ marginTop: 24 }}>
+          Indexing is in progress...
+        </Title>
+        <Text>Please wait while we extract and index the video captions.</Text>
+      </div>
+    </Content>
+  );
+
+  const renderSearching = () => (
+    <Content style={{ padding: "24px 48px" }}>
+      <Row gutter={[32, 32]}>
+        <Col xs={24} lg={14}>
+          <div
+            style={{
+              position: "relative",
+              paddingBottom: "56.25%",
+              height: 0,
+            }}
+          >
+            <iframe
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                borderRadius: "8px",
+              }}
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=1&start=${selectedMoment}`}
+              title="YouTube video player"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Title level={3}>Search Moments</Title>
+          <Paragraph>
+            Search for any topic, name, or phrase mentioned in the video. Click
+            on any result to jump directly to that moment.
+          </Paragraph>
+          {videoId && (
+            <SearchUI videoId={videoId} setSelectedMoment={setSelectedMoment} />
+          )}
+        </Col>
+      </Row>
+    </Content>
+  );
+
+  const renderStep = () => {
+    switch (step) {
+      case Step.URL_INPUT:
+        return renderUrlInput();
+      case Step.INDEXING:
+        return renderIndexing();
+      case Step.SEARCHING:
+        return renderSearching();
+      default:
+        return null;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Flex
+        align="center"
+        justify="center"
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #e6fffa 0%, #b9f6ca 100%)",
+        }}
+      >
+        <Spin size="large" />
+      </Flex>
+    );
+  }
+
+  return (
+    <Layout
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #e6fffa 0%, #b9f6ca 100%)",
+      }}
+    >
+      <Header
+        style={{
+          background: "transparent",
+          padding: "0 48px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Flex align="center" gap="small">
+          <Image src="/upstash.png" alt="Logo" width={32} height={32} />
+          <Title level={4} style={{ margin: 0 }}>
+            Upstash Search
+          </Title>
+        </Flex>
+
+        {step === Step.SEARCHING && (
+          <Button
+            icon={<ArrowLeft size={16} />}
+            onClick={() => {
+              setStep(Step.URL_INPUT);
+              setUrl("");
+              setVideoId(null);
+              setSelectedMoment("0");
+            }}
+          >
+            Search Another Video
+          </Button>
+        )}
+      </Header>
+      {renderStep()}
+      <Footer style={{ textAlign: "center", background: "transparent" }}>
+        <Text style={{ color: "#4b5563" }}>
+          Powered by{" "}
+          <a
+            href="https://upstash.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Upstash
+          </a>
+        </Text>
+      </Footer>
+      <ToastContainer />
+    </Layout>
   );
 }

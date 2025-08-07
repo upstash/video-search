@@ -1,7 +1,10 @@
 {
-  "name": "video-search",
+  "name": "@upstash/video-search",
   "version": "0.1.0",
+  "description": "Text search on YouTube videos",
   "private": true,
+  "license": "MIT",
+  "author": "Upstash",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -9,16 +12,25 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supadata/js": "^1.2.0",
+    "@upstash/ratelimit": "^2.0.6",
+    "@upstash/redis": "^1.35.3",
+    "@upstash/search": "^0.1.5",
+    "@upstash/search-ui": "^0.1.5",
+    "@vercel/functions": "^2.2.8",
+    "antd": "^5.26.7",
+    "lucide-react": "^0.536.0",
+    "next": "15.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.4.5"
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
