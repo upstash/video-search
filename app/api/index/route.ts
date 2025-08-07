@@ -14,7 +14,7 @@ interface Caption {
 
 const ratelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(10, "10 s"),
+  limiter: Ratelimit.slidingWindow(10, "120 s"),
   prefix: "@upstash/ratelimit",
   analytics: true,
 });
@@ -43,7 +43,12 @@ async function upsertCaptions(formattedData: any[], index: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const identifier = "api";
+    const forwarded = request.headers.get("x-forwarded-for");
+    const ip = forwarded
+      ? forwarded.split(",")[0]
+      : request.headers.get("x-real-ip");
+
+    const identifier = ip || "unknown";
     const { success, limit, remaining, pending } = await ratelimit.limit(
       identifier
     );
