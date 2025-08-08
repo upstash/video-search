@@ -41,27 +41,21 @@ export default function Page() {
     setIsLoading(false);
   }, []);
 
-  const isValidYouTubeUrl = (url: string): boolean => {
-    try {
-      const urlObj = new URL(url);
-      return (
-        urlObj.hostname.includes("youtube.com") ||
-        urlObj.hostname.includes("youtu.be")
-      );
-    } catch {
-      return false;
+  const extractYouTubeVideoId = (url: string): string | null => {
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+
+    if (match && match[2].length === 11) {
+      return match[2];
     }
+    return null;
   };
 
   const handleSubmit = async () => {
-    if (!isValidYouTubeUrl(url)) {
-      toast.error("Please enter a valid Youtube URL");
-      return;
-    }
-
-    const videoId = url.split("v=")[1]?.split("&")[0];
+    const videoId = extractYouTubeVideoId(url);
     if (!videoId) {
-      toast.error("Could not extract video ID from the URL.");
+      toast.error("Please enter a valid Youtube URL");
       return;
     }
     setVideoId(videoId);
@@ -75,7 +69,8 @@ export default function Page() {
         return;
       }
 
-      await apiClient.indexVideo(url, videoId);
+      const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      await apiClient.indexVideo(canonicalUrl, videoId);
       setStep(Step.SEARCHING);
     } catch (error) {
       toast.error("Error indexing captions");
@@ -132,7 +127,7 @@ export default function Page() {
         <Space direction="vertical" style={{ width: "100%" }} size="large">
           <Input
             size="large"
-            placeholder="https://www.youtube.com/watch?v=..."
+            placeholder="Paste any YouTube link here"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onPressEnter={handleSubmit}
